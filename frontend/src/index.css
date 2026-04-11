@@ -1,0 +1,95 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  /* Always dark — no light mode */
+  html, body {
+    background-color: #0F172A;
+    color: #F1F5F9;
+  }
+
+  body {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Thin scrollbars globally */
+  ::-webkit-scrollbar        { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track  { background: transparent; }
+  ::-webkit-scrollbar-thumb  { background: rgba(100,116,139,0.25); border-radius: 99px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(100,116,139,0.45); }
+}
+
+@layer components {
+  /* Reusable card */
+  .card {
+    @apply bg-[#1E293B] border border-white/[0.06] rounded-2xl p-5
+           transition-all duration-200 hover:border-white/10;
+  }
+
+  /* Primary button */
+  .btn-primary {
+    @apply bg-blue-600 hover:bg-blue-500 text-white font-semibold
+           px-5 py-2.5 rounded-xl transition-all duration-200
+           hover:shadow-lg hover:shadow-blue-900/40 active:scale-[0.97];
+  }
+
+  /* Ghost button */
+  .btn-ghost {
+    @apply bg-transparent hover:bg-white/5 text-slate-400 hover:text-slate-200
+           px-4 py-2 rounded-xl transition-all duration-150 active:scale-[0.97];
+  }
+
+  /* Badge pill */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs
+           font-mono bg-[#1E293B] text-slate-500 border border-white/[0.06];
+  }
+}
+
+@layer utilities {
+  /* Blue gradient text */
+  .text-gradient {
+    @apply bg-gradient-to-r from-blue-400 via-sky-300 to-cyan-300
+           bg-clip-text text-transparent;
+  }
+
+  /* Subtle grid overlay for hero */
+  .bg-grid-overlay {
+    background-image:
+      linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+}
+
+/* react-pdf: canvas rounded corners */
+.react-pdf__Page__canvas {
+  border-radius: 8px !important;
+  display: block !important;
+  max-width: 100% !important;
+}
+
+/* Typing bounce animation */
+@keyframes typingBounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30%            { transform: translateY(-6px); opacity: 1; }
+}
+
+/* Fix Chrome autofill white background */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0px 1000px #0F172A inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #ffffff;
+  border-radius: 0.75rem;
+  transition: background-color 5000s ease-in-out 0s;
+}
