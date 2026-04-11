@@ -1,4 +1,4 @@
-## Synexa 📄
+# Synexa 📄
 
 Synexa is an intelligent document analysis platform that allows users to upload documents and interact with them through natural language queries. It transforms static files into dynamic, searchable knowledge using AI-powered Retrieval-Augmented Generation (RAG).
 
