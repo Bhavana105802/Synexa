@@ -29,9 +29,6 @@ export default function DocumentViewer() {
   const scrollRef   = useRef(null)
   const [pageLoading,    setPageLoading]    = useState(false)
 
-  // ── Endpoint-fetch state (old records without pdfUrl) ─────
-  // Only used when activeDocument.pdfUrl is null and file type
-  // is TXT or DOCX.  For native PDFs this is never triggered.
   const [fetchedUrl,  setFetchedUrl]  = useState(null)
   const [fetching,    setFetching]    = useState(false)
   const [fetchError,  setFetchError]  = useState('')
@@ -56,7 +53,6 @@ export default function DocumentViewer() {
   const onDocumentLoadSuccess = useCallback(
     ({ numPages: n }) => {
       setNumPages(n)
-      // Clamp current page if it exceeds the new document's range
       setCurrentPage(p => Math.min(p, n))
     },
     [setNumPages, setCurrentPage],
@@ -67,9 +63,6 @@ export default function DocumentViewer() {
     [numPages, setCurrentPage],
   )
 
-  // ── Resolve the best PDF source ───────────────────────────
-  // For native PDFs:  pdfUrl (if backend produced one) → file → fileUrl
-  // For TXT / DOCX:   pdfUrl only — never pass raw .txt/.docx to react-pdf
   let pdfSource = null
 
   if (isPdf) {
@@ -78,14 +71,9 @@ export default function DocumentViewer() {
       ?? activeDocument?.fileUrl
       ?? null
   } else {
-    // Prefer the stored URL; fall back to the blob fetched from the endpoint
     pdfSource = activeDocument?.pdfUrl ?? fetchedUrl ?? null
   }
 
-  // ── Trigger endpoint fetch for old records missing pdfUrl ─
-  // Runs once per document (guarded by fetching + fetchedUrl + fetchError).
-  // Uses a side-effect-inside-render pattern that is safe here because
-  // it is guarded by a boolean flag and executes at most once per doc.
   const shouldFetch =
     needsConv &&
     !activeDocument?.pdfUrl &&
@@ -122,7 +110,7 @@ export default function DocumentViewer() {
   if (!activeDocument) {
     return (
       <div className="flex flex-col h-full w-full bg-[#080F1E]">
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.06] bg-[#0B1222]">
+        <div className="flex items-center gap-2 px-4 py-3.5 border-b border-white/[0.06] bg-[#0B1222]">
           <FileText size={13} className="text-slate-600" />
           <span className="text-xs text-slate-600 flex-1">Document Preview</span>
           <button
@@ -140,9 +128,8 @@ export default function DocumentViewer() {
   }
 
   // ── Toolbar ───────────────────────────────────────────────
-  // Page nav shown once numPages is known (all file types once loaded)
   const toolbar = (
-    <div className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.06] bg-[#0B1222] flex-shrink-0">
+    <div className="flex items-center gap-3 px-5 py-5 border-b border-white/[0.06] bg-[#0B1222] flex-shrink-0">
 
       <FileText size={12} className="text-blue-400 flex-shrink-0" />
       <span className="text-xs text-slate-400 flex-1 truncate min-w-0">
@@ -205,13 +192,6 @@ export default function DocumentViewer() {
       </button>
 
       <div className="w-px h-4 bg-white/[0.08]" />
-      <button
-        onClick={() => setViewerOpen(false)}
-        className="text-slate-500 hover:text-white transition-colors"
-        title="Close viewer"
-      >
-        <PanelRightClose size={13} />
-      </button>
     </div>
   )
 
@@ -317,34 +297,6 @@ export default function DocumentViewer() {
               />
             </div>
           </Document>
-
-          {/* Bottom page nav for easy access after reading */}
-          {numPages && (
-            <div className="flex items-center gap-3 py-2">
-              <button
-                onClick={() => goTo(currentPage - 1)}
-                disabled={currentPage <= 1}
-                className="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06]
-                           text-slate-400 hover:text-white hover:border-white/20
-                           disabled:opacity-30 transition-all text-xs"
-              >
-                ← Prev
-              </button>
-              <span className="text-xs text-slate-500 tabular-nums">
-                {currentPage} / {numPages}
-              </span>
-              <button
-                onClick={() => goTo(currentPage + 1)}
-                disabled={currentPage >= numPages}
-                className="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06]
-                           text-slate-400 hover:text-white hover:border-white/20
-                           disabled:opacity-30 transition-all text-xs"
-              >
-                Next →
-              </button>
-            </div>
-          )}
-
         </div>
       </div>
     </div>

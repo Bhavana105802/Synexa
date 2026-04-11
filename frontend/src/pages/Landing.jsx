@@ -84,7 +84,7 @@ export default function Landing() {
 
           <p className="text-lg text-slate-400 leading-relaxed max-w-2xl mx-auto mb-10">
             Synexa uses retrieval-augmented generation to let you ask natural language questions
-            about your PDFs and get precise, cited answers — powered by local AI.
+            about your PDFs and get precise, cited answers powered by local AI.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -97,13 +97,6 @@ export default function Landing() {
               Start Chatting with Your Documents
               <ArrowRight size={16} />
             </motion.button>
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="btn-ghost flex items-center gap-2 text-base"
-            >
-              <MessageSquare size={15} />
-              View Dashboard
-            </button>
           </div>
         </motion.div>
 

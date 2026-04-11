@@ -9,7 +9,6 @@ import { Copy, Check, Bot, TrendingUp } from 'lucide-react'
 import { useChat } from '../context/ChatContext'
 import clsx from 'clsx'
 
-// ── Typing indicator (3 bouncing dots) ───────────────────────
 export function TypingIndicator() {
   return (
     <motion.div
@@ -41,26 +40,13 @@ export function TypingIndicator() {
   )
 }
 
-// ── LaTeX normalizer ──────────────────────────────────────────
-// LLMs output LaTeX in several formats. This function converts
-// all common variants to the standard $...$ and $$...$$ that
-// remark-math expects so KaTeX can render them properly.
-//
-// Handles:
-//   \( ... \)   → $...$      (inline)
-//   \[ ... \]   → $$...$$    (block)
-//   \begin{equation}...\end{equation} → $$...$$
 function normalizeLatex(text) {
   if (!text) return text
   return text
-    // \( ... \) → $ ... $  (inline math)
     .replace(/\\\(/g, '$').replace(/\\\)/g, '$')
-    // \[ ... \] → $$ ... $$  (display math)
     .replace(/\\\[/g, '$$').replace(/\\\]/g, '$$')
-    // \begin{equation} ... \end{equation} → $$ ... $$
     .replace(/\\begin\{equation\*?\}/g, '$$')
     .replace(/\\end\{equation\*?\}/g, '$$')
-    // \begin{align} ... \end{align} → $$ ... $$
     .replace(/\\begin\{align\*?\}/g, '$$')
     .replace(/\\end\{align\*?\}/g, '$$')
 }
@@ -78,9 +64,7 @@ export default function MessageBubble({ message }) {
   }
 
   const handleSourceClick = (page) => {
-    // Open the viewer if it's closed, then jump to page
     setViewerOpen(true)
-    // Small delay so the viewer has time to mount before scrolling
     setTimeout(() => jumpToPage(page), 80)
   }
 
@@ -117,48 +101,62 @@ export default function MessageBubble({ message }) {
       {/* Content column */}
       <div className={clsx(
         'flex flex-col gap-2.5',
-        isUser ? 'items-end max-w-[75%]' : 'items-start max-w-[82%] flex-1 min-w-0'
+        isUser ? 'items-end max-w-[75%]' : 'items-start w-full flex-1 min-w-0'
       )}>
 
         {/* Message bubble */}
-        <div className={clsx(
-          'px-4 py-3.5 text-sm leading-relaxed',
-          isUser
-            ? 'bg-blue-600 text-white rounded-2xl rounded-tr-sm'
-            : 'bg-[#1E293B] border border-white/[0.06] text-slate-200 rounded-2xl rounded-tl-sm w-full'
-        )}>
-          {isUser ? (
-            <p className="whitespace-pre-wrap">{message.content}</p>
-          ) : (
-            <div className="
-              prose prose-invert prose-sm max-w-none
-              prose-p:my-2 prose-p:leading-relaxed prose-p:text-slate-200
-              prose-headings:text-slate-100 prose-headings:font-semibold prose-headings:mb-2
-              prose-h1:text-base prose-h2:text-[13px] prose-h3:text-[13px]
-              prose-strong:text-white prose-strong:font-semibold
-              prose-ul:my-2 prose-ul:pl-5 prose-li:my-1 prose-li:text-slate-300
-              prose-li:marker:text-blue-400
-              prose-ol:my-2 prose-ol:pl-5 prose-ol:text-slate-300
-              prose-code:bg-black/30 prose-code:px-1.5 prose-code:py-0.5
-              prose-code:rounded-md prose-code:text-xs prose-code:text-blue-300
-              prose-code:font-mono prose-code:border prose-code:border-white/5
-              prose-pre:bg-black/40 prose-pre:border prose-pre:border-white/[0.07]
-              prose-pre:rounded-xl prose-pre:text-xs prose-pre:p-4
-              prose-blockquote:border-l-2 prose-blockquote:border-blue-500/50
-              prose-blockquote:text-slate-400 prose-blockquote:pl-4
-              prose-hr:border-white/[0.06]
-              prose-table:text-xs
-              prose-th:text-slate-300 prose-td:text-slate-400
-            ">
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm, remarkMath]}
-                rehypePlugins={[rehypeKatex]}
-              >
-                {normalizeLatex(message.content)}
-              </ReactMarkdown>
-            </div>
-          )}
-        </div>
+<div className={clsx(
+  'px-4 py-3.5 text-sm leading-relaxed relative', 
+  isUser
+    ? 'bg-blue-600 text-white rounded-2xl rounded-tr-sm'
+    : 'bg-[#1E293B] border border-white/[0.06] text-slate-200 rounded-2xl rounded-tl-sm w-full'
+)}>
+
+  {isUser ? (
+    <p className="whitespace-pre-wrap">{message.content}</p>
+  ) : (
+    <div className="
+      prose prose-invert prose-sm max-w-none
+      prose-p:my-2 prose-p:leading-relaxed prose-p:text-slate-200
+      prose-headings:text-slate-100 prose-headings:font-semibold prose-headings:mb-2
+      prose-h1:text-base prose-h2:text-[13px] prose-h3:text-[13px]
+      prose-strong:text-white prose-strong:font-semibold
+      prose-ul:my-2 prose-ul:pl-5 prose-li:my-1 prose-li:text-slate-300
+      prose-li:marker:text-blue-400
+      prose-ol:my-2 prose-ol:pl-5 prose-ol:text-slate-300
+      prose-code:bg-black/30 prose-code:px-1.5 prose-code:py-0.5
+      prose-code:rounded-md prose-code:text-xs prose-code:text-blue-300
+      prose-code:font-mono prose-code:border prose-code:border-white/5
+      prose-pre:bg-black/40 prose-pre:border prose-pre:border-white/[0.07]
+      prose-pre:rounded-xl prose-pre:text-xs prose-pre:p-4
+      prose-blockquote:border-l-2 prose-blockquote:border-blue-500/50
+      prose-blockquote:text-slate-400 prose-blockquote:pl-4
+      prose-hr:border-white/[0.06]
+      prose-table:text-xs
+      prose-th:text-slate-300 prose-td:text-slate-400
+    ">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[rehypeKatex]}
+      >
+        {normalizeLatex(message.content)}
+      </ReactMarkdown>
+    </div>
+  )}
+
+  {/* ✅ CONFIDENCE INSIDE BUBBLE */}
+  {!isUser && confidencePct !== null && (
+    <div className={clsx(
+      'absolute bottom-2 right-3 text-xs font-semibold',
+      confidencePct >= 75 ? 'text-emerald-400' :
+      confidencePct >= 50 ? 'text-yellow-400' :
+      'text-red-400'
+    )}>
+      {confidencePct}%
+    </div>
+  )}
+
+</div>
 
         {/* AI extras: sources + confidence + copy */}
         {!isUser && (
@@ -193,32 +191,7 @@ export default function MessageBubble({ message }) {
               </div>
             )}
 
-            {/* Confidence bar */}
-            {confidencePct !== null && (
-              <div className="flex items-center gap-2.5">
-                <TrendingUp size={11} className="text-slate-600" />
-                <span className="text-[10px] text-slate-600 font-medium uppercase tracking-wider">
-                  Confidence
-                </span>
-                <div className="w-28 h-1.5 bg-[#0F172A] rounded-full overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${confidencePct}%` }}
-                    transition={{ duration: 0.75, ease: 'easeOut', delay: 0.1 }}
-                    className={clsx('h-full rounded-full', barColor)}
-                  />
-                </div>
-                <span className={clsx('text-[11px] font-mono font-semibold', textColor)}>
-                  {confidencePct}%
-                </span>
-                {message.mode && (
-                  <span className="ml-0.5 text-[10px] text-slate-600 border border-white/[0.06]
-                                   rounded-md px-2 py-0.5 bg-[#0F172A] font-mono">
-                    {message.mode}
-                  </span>
-                )}
-              </div>
-            )}
+            
 
             {/* Copy button */}
             <button

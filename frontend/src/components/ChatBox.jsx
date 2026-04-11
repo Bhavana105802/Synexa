@@ -16,34 +16,33 @@ export default function ChatBox() {
   const navigate = useNavigate()
   const {
     messages, addMessage, isLoading, setIsLoading,
-    activeDocument, activeChat, clearChat,
+    activeDocument, activeChat,
     viewerOpen, setViewerOpen,
   } = useChat()
+
   const { isGuest, isLoggedIn, displayName } = useAuth()
 
   const [input, setInput] = useState('')
-  const [mode,  setMode]  = useState('simple')
-  const bottomRef   = useRef(null)
+  const [mode, setMode] = useState('simple')
+
+  const bottomRef = useRef(null)
   const textareaRef = useRef(null)
 
-  // Auto-scroll to latest message
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isLoading])
 
-  // Auto-resize textarea
   useEffect(() => {
     const ta = textareaRef.current
     if (!ta) return
     ta.style.height = 'auto'
-    ta.style.height = Math.min(ta.scrollHeight, 144) + 'px'
+    ta.style.height = Math.min(ta.scrollHeight, 120) + 'px'
   }, [input])
 
   const sendMessage = async (question) => {
     const q = (question || input).trim()
     if (!q || isLoading) return
 
-    // Guard: require an active chat (created on upload)
     if (!activeChat?.id) {
       addMessage({
         role: 'ai',
@@ -59,15 +58,13 @@ export default function ChatBox() {
     setIsLoading(true)
 
     try {
-      // JWT sent automatically by axios interceptor.
-      // activeChat.id is the backend chat_id — backend resolves document_id from it.
       const data = await askQuestion(q, mode, activeChat.id)
       addMessage({
-        role:       'ai',
-        content:    data.answer,
-        sources:    data.sources    || [],
+        role: 'ai',
+        content: data.answer,
+        sources: data.sources || [],
         confidence: data.confidence,
-        mode:       data.mode,
+        mode: data.mode,
       })
     } catch (err) {
       const detail = err.response?.data?.detail
@@ -81,20 +78,21 @@ export default function ChatBox() {
   }
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      sendMessage()
+    }
   }
 
   return (
-    <div className="flex flex-col h-full w-full bg-[#0F172A] overflow-hidden">
+    <div className="flex flex-col h-full w-full bg-[#0F172A] overflow-hidden relative">
 
-      {/* ── Top Bar ──────────────────────────────────────── */}
-      <div className="flex items-center gap-3 px-5 py-3.5 border-b border-white/[0.06]
-                      bg-[#0F172A] flex-shrink-0">
+      {/* Top Bar */}
+      <div className="flex items-center gap-3 px-5 py-2.5 border-b border-white/[0.06] bg-[#0F172A] flex-shrink-0">
         <div className="flex items-center gap-2.5 flex-1 min-w-0">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0
-                           shadow-[0_0_6px_rgba(52,211,153,0.7)]" />
+          <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.7)]" />
           <div className="min-w-0">
-            <h2 className="font-semibold text-[13px] text-white truncate leading-none">
+            <h2 className="font-semibold text-[13px] text-white truncate">
               {activeDocument ? activeDocument.name : 'Synexa Chat'}
             </h2>
             {activeDocument && (
@@ -105,12 +103,10 @@ export default function ChatBox() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2">
           {isLoggedIn && (
-            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg
-                            bg-white/[0.04] border border-white/[0.06]">
-              <div className="w-4 h-4 rounded-full bg-blue-600 flex items-center justify-center
-                              text-white text-[9px] font-bold flex-shrink-0">
+            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06]">
+              <div className="w-4 h-4 rounded-full bg-blue-600 flex items-center justify-center text-white text-[9px] font-bold">
                 {displayName[0].toUpperCase()}
               </div>
               <span className="text-[11px] text-slate-400">{displayName}</span>
@@ -120,93 +116,88 @@ export default function ChatBox() {
           {!activeDocument && (
             <button
               onClick={() => navigate('/upload')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg
-                         bg-blue-500/10 border border-blue-500/20
-                         text-xs text-blue-400 hover:bg-blue-500/20 transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-xs text-blue-400"
             >
               <Upload size={12} /> Upload PDF
             </button>
           )}
 
           {isGuest && (
-            <button
-              onClick={() => navigate('/signup')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg
-                         bg-emerald-500/10 border border-emerald-500/20
-                         text-xs text-emerald-400 hover:bg-emerald-500/20 transition-all"
-            >
-              <UserCircle2 size={12} /> Sign Up
+            <button onClick={() => navigate('/signup')}>
+              <UserCircle2 size={12} />
             </button>
           )}
 
-          <button
-            onClick={() => setViewerOpen(p => !p)}
-            className="p-2 rounded-lg hover:bg-white/5 text-slate-500
-                       hover:text-white transition-colors"
-            title={viewerOpen ? 'Hide PDF viewer' : 'Show PDF viewer'}
-          >
+          <button onClick={() => setViewerOpen(p => !p)}>
             {viewerOpen ? <PanelRightClose size={14} /> : <PanelRight size={14} />}
           </button>
         </div>
       </div>
 
-      {/* ── Messages ─────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto min-h-0">
-        <div className="py-6 space-y-6">
-          <AnimatePresence initial={false}>
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto min-h-0 flex flex-col">
+        <div className="py-6 pb-32 space-y-6 max-w-3xl mx-auto w-full px-4 flex flex-col">
+          <AnimatePresence>
             {messages.length === 0
               ? <EmptyState activeDocument={activeDocument} onSuggestion={sendMessage} />
               : messages.map(msg => <MessageBubble key={msg.id} message={msg} />)
             }
           </AnimatePresence>
+
           {isLoading && <TypingIndicator />}
-          <div ref={bottomRef} className="h-1" />
+          <div ref={bottomRef} />
         </div>
       </div>
 
-      {/* ── Input ────────────────────────────────────────── */}
-      <div className="flex-shrink-0 px-4 pb-4 pt-3 border-t border-white/[0.06] bg-[#0F172A]">
-        <div className="flex items-center justify-between mb-3 px-0.5">
-          <AnswerModeSelector value={mode} onChange={setMode} />
-        </div>
+      {/* Floating Input */}
+      <div className="absolute bottom-0 left-0 w-full px-6 pb-5 pt-3 
+                      bg-gradient-to-t from-[#0F172A] via-[#0F172A]/90 to-transparent">
 
-        <div className={clsx(
-          'flex items-end gap-3 bg-[#1E293B] border rounded-2xl px-4 py-3',
-          input ? 'border-blue-500/50' : 'border-white/[0.06]'
-        )}>
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            rows={1}
-            disabled={isLoading}
-            placeholder={
-              activeDocument
-                ? `Ask anything about ${activeDocument.name}…`
-                : 'Upload a PDF first, or just start chatting…'
-            }
-            className="flex-1 bg-transparent text-sm text-slate-100 placeholder-slate-600
-                       resize-none outline-none leading-relaxed min-h-[22px]
-                       disabled:opacity-40"
-          />
-          <motion.button
-            whileTap={{ scale: 0.9 }}
-            onClick={() => sendMessage()}
-            disabled={!input.trim() || isLoading}
-            className={clsx(
-              'w-9 h-9 rounded-xl flex items-center justify-center transition-all',
-              input.trim() && !isLoading
-                ? 'bg-blue-600 hover:bg-blue-500'
-                : 'bg-white/[0.04] cursor-not-allowed'
-            )}
-          >
-            {isLoading
-              ? <div className="w-4 h-4 border-2 border-slate-600 border-t-blue-400
-                                rounded-full animate-spin" />
-              : <Send size={14} className={input.trim() ? 'text-white' : 'text-slate-600'} />
-            }
-          </motion.button>
+        <div className="max-w-3xl mx-auto w-full">
+
+          <div className="mb-2 flex justify-start">
+  <div className="max-w-fit">
+    <AnswerModeSelector value={mode} onChange={setMode} />
+  </div>
+</div>
+
+          <div className={clsx(
+  'flex items-center gap-3 bg-[#1E293B] border border-white/[0.08]',
+  'rounded-2xl px-4 py-2.5 shadow-lg',
+            input ? 'border-blue-500/50' : ''
+          )}>
+
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              rows={1}
+              disabled={isLoading}
+              placeholder={
+                activeDocument
+                  ? `Ask anything about ${activeDocument.name}…`
+                  : 'Start typing...'
+              }
+              className="flex-1 bg-transparent text-sm text-slate-100 placeholder-slate-500
+                         resize-none outline-none min-h-[20px] max-h-[120px]"
+            />
+
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={() => sendMessage()}
+              disabled={!input.trim() || isLoading}
+              className={clsx(
+                'w-9 h-9 rounded-xl flex items-center justify-center',
+                input.trim()
+                  ? 'bg-blue-600 hover:bg-blue-500'
+                  : 'bg-white/[0.05]'
+              )}
+            >
+              <Send size={14} />
+            </motion.button>
+
+          </div>
         </div>
       </div>
     </div>
