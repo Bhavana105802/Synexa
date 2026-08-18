@@ -87,11 +87,52 @@ async def ask_question(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+from fastapi.responses import StreamingResponse
+from app.services.rag_pipeline import run_rag_pipeline, stream_rag_pipeline
+
+
+@router.post(
+    "/ask/stream",
+    summary="Ask a question with real-time SSE token streaming",
+    description="Streams answer tokens as Server-Sent Events (SSE) word-by-word with zero delay.",
+    tags=["Question Answering"],
+)
+async def ask_question_stream(
+    request: QueryRequest,
+    user_id: str = Depends(get_current_user),
+):
+    chat_id = request.chat_id
+    doc_id = request.document_id
+
+    if chat_id:
+        try:
+            from app.services.memory import get_chat
+            chat_doc = await get_chat(chat_id)
+            if chat_doc and chat_doc["user_id"] != user_id:
+                raise HTTPException(status_code=403, detail="Access denied.")
+        except HTTPException:
+            raise
+        except Exception:
+            pass
+
+    generator = stream_rag_pipeline(
+        question=request.question,
+        mode=request.mode,
+        chat_id=chat_id,
+        user_id=user_id,
+        document_id=doc_id or "default",
+    )
+
+    return StreamingResponse(generator, media_type="text/event-stream")
+
+
 @router.get(
     "/chats",
     summary="List all chats for the authenticated user",
     tags=["Question Answering"],
 )
+
+
 async def list_chats(user_id: str = Depends(get_current_user)):
     try:
         from app.services.memory import get_user_chats

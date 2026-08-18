@@ -1,18 +1,23 @@
 import logging
 import os
-from typing import Dict, Any, List, Tuple, Optional
+import json
+import asyncio
+from typing import Dict, Any, List, Tuple, AsyncGenerator
 
-from langchain.schema import Document, HumanMessage
+from langchain_core.documents import Document
+from langchain_core.messages import HumanMessage
+
 
 from app.config import settings
-from app.services.retriever import retrieve_relevant_chunks
+from app.services.hybrid_retriever import hybrid_retrieve
+from app.services.reranker import rerank_documents
 from app.services.qa_engine import get_llm
 from app.services.vector_store import resolve_document_id
 
 logger = logging.getLogger(__name__)
 
 NOT_FOUND = "Information not found in documents."
-SIMILARITY_THRESHOLD = 0.20
+SIMILARITY_THRESHOLD = 0.15
 
 _RULES = """\
 STRICT RULES — follow without exception:
@@ -69,7 +74,9 @@ def _build_context_and_sources(
     scores: List[float] = []
 
     for doc, score in results:
-        context_parts.append(doc.page_content.strip())
+        # Parent-Child Hierarchical Context Reconstruction
+        passage_text = doc.metadata.get("parent_text", doc.page_content.strip())
+        context_parts.append(passage_text)
         scores.append(score)
 
         raw = doc.metadata.get("source", "unknown")
@@ -121,7 +128,7 @@ async def run_rag_pipeline(
     user_id: str = "default",
     document_id: str = "default",
 ) -> Dict[str, Any]:
-
+    """Standard non-streaming RAG execution."""
     resolved_chat_id = chat_id
 
     if chat_id:
@@ -132,83 +139,48 @@ async def run_rag_pipeline(
 
         user_id = chat_doc["user_id"]
         document_id = chat_doc["document_id"]
-
-        logger.info(
-            f"[RAG] chat='{chat_id}' user='{user_id}' "
-            f"doc='{document_id}' mode={mode}"
-        )
     else:
         document_id = resolve_document_id(user_id, document_id or "default")
-        logger.info(
-            f"[RAG] (legacy) user='{user_id}' doc='{document_id}' mode={mode}"
-        )
 
-    q_short = question[:60]
-    logger.info(f"[RAG] q='{q_short}'")
+    history_str = await _load_history_for_chat(resolved_chat_id) if resolved_chat_id else ""
 
-    if resolved_chat_id:
-        history_str = await _load_history_for_chat(resolved_chat_id)
-    else:
-        history_str = ""
-        try:
-            from app.services.memory import get_chat_history as _old_get, format_history_for_prompt
-            from app.services.database import get_chats_collection
-            old_doc = await get_chats_collection().find_one(
-                {"user_id": user_id, "document_id": document_id}
-            )
-            if old_doc and old_doc.get("messages"):
-                msgs = old_doc["messages"][-10:]
-                history_str = format_history_for_prompt(
-                    [{"role": m["role"], "content": m["content"]} for m in msgs]
-                )
-        except Exception:
-            pass
-
-    results = retrieve_relevant_chunks(
+    # 1. Hybrid Search (FAISS + BM25 + Reciprocal Rank Fusion)
+    candidates = hybrid_retrieve(
         question,
         user_id=user_id,
         document_id=document_id,
+        top_k=settings.TOP_K_RESULTS * 2,
+    )
+
+    if not candidates:
+        if resolved_chat_id:
+            await _save_pair_to_chat(resolved_chat_id, question, NOT_FOUND)
+        return {
+            "answer": NOT_FOUND,
+            "sources": [],
+            "confidence": 0.0,
+            "mode": mode,
+            "document_id": document_id,
+            "chat_id": resolved_chat_id,
+            "highlight_text": "",
+        }
+
+    # 2. Two-Stage Cross-Encoder Reranking
+    reranked = rerank_documents(
+        query=question,
+        candidates=candidates,
         top_k=settings.TOP_K_RESULTS,
     )
 
-    if not results:
-        logger.warning("[RAG] No chunks retrieved.")
-        if resolved_chat_id:
-            await _save_pair_to_chat(resolved_chat_id, question, NOT_FOUND)
-        return {
-            "answer": NOT_FOUND,
-            "sources": [],
-            "confidence": 0.0,
-            "mode": mode,
-            "document_id": document_id,
-            "chat_id": resolved_chat_id,
-            "highlight_text": "",
-        }
+    filtered = [(d, s) for d, s in reranked if s >= SIMILARITY_THRESHOLD]
+    if not filtered:
+        filtered = reranked[:2]  # Fallback to top 2 candidates if below threshold
 
-    results = [(d, s) for d, s in results if s >= SIMILARITY_THRESHOLD]
-    if not results:
-        logger.warning(f"[RAG] All chunks below threshold {SIMILARITY_THRESHOLD}.")
-        if resolved_chat_id:
-            await _save_pair_to_chat(resolved_chat_id, question, NOT_FOUND)
-        return {
-            "answer": NOT_FOUND,
-            "sources": [],
-            "confidence": 0.0,
-            "mode": mode,
-            "document_id": document_id,
-            "chat_id": resolved_chat_id,
-            "highlight_text": "",
-        }
-
-    context, sources, scores = _build_context_and_sources(results)
-    confidence = round(sum(scores) / len(scores), 4)
-
-    highlight_text = results[0][0].page_content.strip()[:300]
+    context, sources, scores = _build_context_and_sources(filtered)
+    confidence = round(sum(scores) / len(scores), 4) if scores else 0.0
+    highlight_text = filtered[0][0].page_content.strip()[:300] if filtered else ""
 
     prompt = _build_prompt(question, context, history_str, mode)
-    logger.info(
-        f"[RAG] Calling LLM | prompt={len(prompt)} chars | conf={confidence}"
-    )
 
     llm = get_llm()
     try:
@@ -223,7 +195,6 @@ async def run_rag_pipeline(
         "information not found", "not found in document",
         "not present in", "not mentioned in", "cannot be found",
         "no information", "i don't have", "i do not have",
-        "not available in",
     ]
     if any(sig in answer.lower() for sig in _signals):
         answer = NOT_FOUND
@@ -232,8 +203,6 @@ async def run_rag_pipeline(
 
     if resolved_chat_id:
         await _save_pair_to_chat(resolved_chat_id, question, answer)
-
-    logger.info(f"[RAG] Done | confidence={confidence} | sources={len(sources)}")
 
     return {
         "answer": answer,
@@ -244,3 +213,45 @@ async def run_rag_pipeline(
         "chat_id": resolved_chat_id,
         "highlight_text": highlight_text,
     }
+
+
+async def stream_rag_pipeline(
+    question: str,
+    mode: str = "simple",
+    chat_id: str = None,
+    user_id: str = "default",
+    document_id: str = "default",
+) -> AsyncGenerator[str, None]:
+    """Server-Sent Events (SSE) streaming generator yielding word-by-word token payloads."""
+    # First get context & sources
+    rag_res = await run_rag_pipeline(
+        question=question,
+        mode=mode,
+        chat_id=chat_id,
+        user_id=user_id,
+        document_id=document_id,
+    )
+
+    # Initial metadata frame
+    meta_frame = {
+        "type": "meta",
+        "sources": rag_res["sources"],
+        "confidence": rag_res["confidence"],
+        "highlight_text": rag_res["highlight_text"],
+        "chat_id": rag_res["chat_id"],
+    }
+    yield f"data: {json.dumps(meta_frame)}\n\n"
+    await asyncio.sleep(0.01)
+
+    full_answer = rag_res["answer"]
+
+    # Stream answer tokens word by word
+    words = full_answer.split(" ")
+    for idx, word in enumerate(words):
+        chunk_text = word + (" " if idx < len(words) - 1 else "")
+        token_frame = {"type": "token", "content": chunk_text}
+        yield f"data: {json.dumps(token_frame)}\n\n"
+        await asyncio.sleep(0.02)  # Simulate smooth typewriter effect
+
+    # Final completion frame
+    yield "data: [DONE]\n\n"

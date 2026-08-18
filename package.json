@@ -1,0 +1,10 @@
+{
+  "name": "synexa-root",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "run-all.bat",
+    "backend": "cd backend && python dev.py",
+    "frontend": "cd frontend && npm run dev"
+  }
+}

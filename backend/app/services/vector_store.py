@@ -4,7 +4,8 @@ import logging
 from typing import List
 
 from langchain_community.vectorstores import FAISS
-from langchain.schema import Document
+from langchain_core.documents import Document
+
 
 from app.config import settings
 from app.services.embeddings import get_embedding_model

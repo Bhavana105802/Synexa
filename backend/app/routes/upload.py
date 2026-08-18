@@ -111,6 +111,21 @@ async def upload_document(
             chunks, user_id=user_id, document_id=document_id,
         )
 
+        # ── Save BM25 Sparse Index for Hybrid Retrieval ──────────
+        try:
+            from app.services.hybrid_retriever import save_bm25_index
+            save_bm25_index(chunks, user_id=user_id, document_id=document_id)
+        except Exception as e:
+            logger.warning(f"[Upload] BM25 indexing skipped: {e}")
+
+        # ── Document Intelligence (Summary & Topics) ─────────────
+        doc_intel = {}
+        try:
+            from app.services.summarizer import generate_document_intelligence
+            doc_intel = generate_document_intelligence(chunks)
+        except Exception as e:
+            logger.warning(f"[Upload] Document intelligence generation failed: {e}")
+
         chat_id = None
         try:
             from app.services.memory import create_chat
@@ -137,9 +152,14 @@ async def upload_document(
                 "pdf_path": pdf_path,
                 "file_url": raw_file_url,
                 "pdf_url": pdf_url,
+                "summary": doc_intel.get("summary", ""),
+                "topics": doc_intel.get("topics", []),
+                "word_count": doc_intel.get("word_count", 0),
+                "est_read_time_min": doc_intel.get("est_read_time_min", 0),
             })
         except Exception as e:
             logger.warning(f"[Upload] MongoDB document save skipped: {e}")
+
 
         logger.info(
             f"[Upload] ✅ '{original_filename}' → "

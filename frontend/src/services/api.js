@@ -83,6 +83,58 @@ export async function askQuestion(question, mode = 'simple', chatId) {
   return response.data
 }
 
+export async function askQuestionStream(question, mode = 'simple', chatId, onToken, onMeta, onComplete, onError) {
+  try {
+    const token = getToken()
+    const response = await fetch('/ask/stream', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ question, mode, chat_id: chatId }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n\n')
+      buffer = lines.pop() || ''
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const payload = line.replace('data: ', '').trim()
+          if (payload === '[DONE]') {
+            if (onComplete) onComplete()
+            return
+          }
+          try {
+            const data = JSON.parse(payload)
+            if (data.type === 'meta' && onMeta) onMeta(data)
+            if (data.type === 'token' && onToken) onToken(data.content)
+          } catch (err) {
+            // Ignore parse errors for raw frames
+          }
+        }
+      }
+    }
+    if (onComplete) onComplete()
+  } catch (err) {
+    if (onError) onError(err)
+  }
+}
+
+
 // ── Chat management ───────────────────────────────────────
 
 export async function listChats() {

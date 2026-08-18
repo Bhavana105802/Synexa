@@ -1,7 +1,8 @@
 import logging
 from typing import List, Tuple, Optional
 
-from langchain.schema import Document
+from langchain_core.documents import Document
+
 
 from app.config import settings
 from app.services.vector_store import load_vectorstore

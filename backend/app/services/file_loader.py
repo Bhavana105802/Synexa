@@ -2,7 +2,8 @@ import os
 import logging
 from typing import List, Optional
 
-from langchain.schema import Document
+from langchain_core.documents import Document
+
 
 from app.services.ocr import run_ocr_on_image
 
