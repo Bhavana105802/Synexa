@@ -11,3 +11,4 @@ backend/.env
 vectorstore/
 data/documents/
 opt/
+backend/data/
