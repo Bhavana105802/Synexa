@@ -20,9 +20,18 @@ class SourceDocument(BaseModel):
     page: int = Field(..., example=4)
 
 
+class EvidenceItem(BaseModel):
+    document: str = Field(..., example="report.pdf")
+    page: int = Field(..., example=4)
+    excerpt: str = Field(..., example="Company revenue grew 25%...")
+    relevance: Optional[str] = Field(default="Context Match")
+
+
 class QueryResponse(BaseModel):
     answer: str = Field(...)
     sources: List[SourceDocument] = Field(default=[])
+    evidence: List[EvidenceItem] = Field(default=[])
+    evidence_level: str = Field(default="INSUFFICIENT EVIDENCE")
     confidence: float = Field(..., ge=0.0, le=1.0)
     mode: str = Field(...)
     chat_id: Optional[str] = Field(default=None)

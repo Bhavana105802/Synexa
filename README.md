@@ -1,6 +1,6 @@
-# Synexa — Production Advanced RAG & Document AI Platform ⚡
+# Evidentra — Evidence-Backed Document Intelligence Platform ⚡
 
-**Synexa** is an enterprise-grade Retrieval-Augmented Generation (RAG) and Document Intelligence Platform built to solve precision, recall, and keyword drop-off challenges in static vector-only search. It features **Hybrid Dense+Sparse Search (BM25 + FAISS + RRF)**, **Two-Stage Cross-Encoder Reranking**, **Parent-Child Hierarchical Chunking**, **Real-Time Token Streaming (SSE)**, and a **Quantitative RAG Evaluation Suite**.
+**Evidentra** is an enterprise-grade document intelligence and Retrieval-Augmented Generation (RAG) platform built on the principle: **"From documents to defensible answers."** It delivers verifiable answers supported by retrieved evidence and traceable sources, solving precision, recall, and hallucination challenges through **Hybrid Dense+Sparse Search (BM25 + FAISS + RRF)**, **Two-Stage Cross-Encoder Reranking**, **Parent-Child Hierarchical Chunking**, a **Real Evidence Inspector**, and an **Empirical RAG Evaluation Suite**.
 
 ---
 
@@ -8,33 +8,35 @@
 
 ```mermaid
 flowchart TD
-    subgraph Frontend["React (Vite) + Tailwind UI"]
-        A[User Upload / Query] --> B[Token Streaming & Citation View]
+    subgraph Frontend["Evidentra React UI"]
+        A[User Query / Document] --> B[Token Streaming & Evidence Inspector]
+        B --> C[Interactive Document Viewer & Citations]
     end
 
     subgraph Ingestion["Ingestion & Indexing Pipeline"]
-        C[File Loader & OCR] --> D[Parent-Child Hierarchical Chunking]
-        D --> E[FAISS Vector Store - Dense Embeddings]
-        D --> F[BM25 Okapi Index - Sparse Keyword Index]
-        D --> G[Document Intelligence & Executive Summarizer]
+        D[File Loader & OCR] --> E[Parent-Child Hierarchical Chunking]
+        E --> F[FAISS Vector Store - Dense Embeddings]
+        E --> G[BM25 Okapi Index - Sparse Keyword Index]
     end
 
     subgraph Retrieval["Two-Stage Hybrid Retrieval & Reranking"]
-        H[User Question] --> I[HyDE & Query Expansion]
-        I --> J1[FAISS Dense Search]
-        I --> J2[BM25 Sparse Search]
-        J1 & J2 --> K[Reciprocal Rank Fusion - RRF]
-        K --> L[FlashRank Cross-Encoder Reranker]
-        L --> M[Parent Context Reconstruction]
+        H[User Question] --> I1[FAISS Dense Search]
+        H --> I2[BM25 Sparse Search]
+        I1 & I2 --> J[Reciprocal Rank Fusion - RRF]
+        J --> K[FlashRank Cross-Encoder Reranker]
+        K --> L[Parent Context Reconstruction]
     end
 
-    subgraph Execution["Generation & Streaming"]
-        M --> N[Strict Guardrail Prompting]
-        N --> O[LLM Provider - OpenAI / Ollama / HuggingFace]
-        O --> P[Server-Sent Events - SSE Stream /ask/stream]
+    subgraph Reliability["Evidence Reliability & Guardrails"]
+        L --> M{Evidence Assessment}
+        M -->|Strong / Limited| N[Grounded Context Synthesis]
+        M -->|Insufficient / Refusal| O[Safe Refusal Response]
     end
 
-    B <--> P
+    subgraph Execution["Generation & Traceability"]
+        N & O --> P[LLM Answer + Structured Evidence Items]
+        P --> B
+    end
 ```
 
 ---
@@ -44,24 +46,24 @@ flowchart TD
 ### 1. Hybrid Search (Dense FAISS + Sparse BM25 + Reciprocal Rank Fusion)
 - **Problem:** Dense vector embeddings miss exact product codes, acronyms, dates, and proper names due to semantic smoothing.
 - **Solution:** Integrated BM25Okapi keyword search alongside FAISS vector search, fused via Reciprocal Rank Fusion (RRF):
-  \[ \text{RRF\_Score}(d) = \sum_{m \in M} \frac{1}{60 + r_m(d)} \]
-- **Impact:** Solves keyword drop-offs and improves Context Recall by ~35%.
+  $$\text{RRF\_Score}(d) = \sum_{m \in M} \frac{1}{60 + r_m(d)}$$
+- **Impact:** Eliminates keyword drop-offs and dramatically improves Evidence Recall.
 
 ### 2. Two-Stage Retrieval with Cross-Encoder Reranking
 - **Problem:** Vector search top-K results often contain semantically close but noisy chunks.
-- **Solution:** Retrieve top-20 candidates using Hybrid RRF, then pass passages through a lightweight **Cross-Encoder Reranker** (`ms-marco-MiniLM-L-6-v2`) for fine-grained attention scoring.
-- **Impact:** Raises Context Precision@5 from 0.62 to 0.89.
+- **Solution:** Retrieve top candidate chunks via Hybrid RRF, then pass passages through a lightweight **Cross-Encoder Reranker** (`ms-marco-MiniLM-L-6-v2`) for fine-grained attention scoring.
+- **Impact:** Filters noisy passages and elevates precise ground-truth evidence to top ranks.
 
 ### 3. Parent-Child Hierarchical Chunking
 - **Problem:** Small chunks miss surrounding section context; large chunks dilute vector search similarity.
-- **Solution:** Split documents into 1500-token parent sections and 400-token child search vectors. High-precision vector matches trigger full parent context assembly in the LLM prompt.
+- **Solution:** Split documents into parent sections and child search vectors. High-precision vector matches trigger full parent context assembly in the LLM prompt.
 
-### 4. Real-time Server-Sent Events (SSE) Token Streaming
-- **Problem:** Non-streaming RAG API requests block for 3-5 seconds, causing poor UX.
-- **Solution:** Built `/ask/stream` using FastAPI `StreamingResponse` to push tokens to the React frontend word-by-word with **<200ms Time-To-First-Token (TTFT)**.
+### 4. Deterministic Evidence Reliability & Inspector
+- **Problem:** Raw confidence percentages (e.g. "94% confident") are often uncalibrated and misleading.
+- **Solution:** Evidentra uses deterministic evidence support states (`STRONG EVIDENCE`, `LIMITED EVIDENCE`, `INSUFFICIENT EVIDENCE`) based on verified chunk counts and cross-encoder scores, paired with an inline **Evidence Inspector** that exposes the exact retrieved passages with direct `[Open Source]` jumping.
 
-### 5. Quantitative RAG Evaluation Suite (`eval_rag.py`)
-- Automated benchmark framework calculating **Context Precision, Context Recall, Answer Faithfulness, and Latency**.
+### 5. Empirical RAG Evaluation Framework (`backend/evaluation/`)
+- Non-simulated benchmark suite testing live vector search, BM25 retrieval, RRF fusion, and guardrails across real document questions without fake percentages.
 
 ---
 
@@ -75,8 +77,8 @@ flowchart TD
 | **Reranking** | FlashRank / Cross-Encoder (`ms-marco-MiniLM-L-6-v2`) |
 | **LLM Support** | OpenAI (GPT-4o/3.5), Ollama (Llama 3/Phi-3), HuggingFace |
 | **Database** | MongoDB (Atlas / Local) |
-| **Testing** | Pytest, Pytest-Asyncio, HTTPX |
-| **Frontend** | React 18, Vite, Tailwind CSS, Lucide React, EventSource |
+| **Evaluation** | Custom Empirical Benchmark Suite, Pytest |
+| **Frontend** | React 18, Vite, Tailwind CSS, Lucide React, KaTeX |
 
 ---
 
@@ -100,16 +102,15 @@ Run tests:
 pytest -v
 ```
 
-Run evaluation benchmark:
+Run Empirical Evaluation Benchmark:
 ```bash
-python -m eval.eval_rag
+python -m evaluation.run_evaluation --skip-llm
 ```
 
-Start API Server:
+Start backend dev server:
 ```bash
-uvicorn app.main:app --reload --port 8000
+python dev.py
 ```
-Swagger UI available at `http://127.0.0.1:8000/docs`.
 
 ### 2️⃣ Frontend Setup
 
@@ -118,9 +119,3 @@ cd frontend
 npm install
 npm run dev
 ```
-Open `http://localhost:5173`.
-
----
-
-## 📄 License
-MIT License. Built for enterprise RAG benchmarking and demonstration.

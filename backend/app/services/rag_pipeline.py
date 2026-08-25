@@ -16,7 +16,7 @@ from app.services.vector_store import resolve_document_id
 
 logger = logging.getLogger(__name__)
 
-NOT_FOUND = "Information not found in documents."
+NOT_FOUND = "Information not found in documents. I could not find enough supporting evidence in the selected documents to answer this reliably."
 SIMILARITY_THRESHOLD = 0.15
 
 _RULES = """\
@@ -65,13 +65,36 @@ Exam-Style Answer (from context only):""",
 }
 
 
+def determine_evidence_level(
+    scores: List[float],
+    chunk_count: int,
+    is_refusal: bool = False,
+) -> str:
+    """
+    Deterministic evidence support state calculation:
+    - STRONG EVIDENCE: >= 2 relevant retrieved chunks with strong reranking / similarity scores (max >= 0.60 or avg >= 0.50).
+    - LIMITED EVIDENCE: >= 1 relevant retrieved chunk meeting similarity threshold, but coverage is partial.
+    - INSUFFICIENT EVIDENCE: No relevant chunks, low similarity scores, or model refusal triggered.
+    """
+    if is_refusal or chunk_count == 0 or not scores:
+        return "INSUFFICIENT EVIDENCE"
+    top_score = max(scores) if scores else 0.0
+    avg_score = sum(scores) / len(scores) if scores else 0.0
+    if chunk_count >= 2 and (top_score >= 0.60 or avg_score >= 0.50):
+        return "STRONG EVIDENCE"
+    elif chunk_count >= 1 and top_score >= SIMILARITY_THRESHOLD:
+        return "LIMITED EVIDENCE"
+    return "INSUFFICIENT EVIDENCE"
+
+
 def _build_context_and_sources(
     results: List[Tuple[Document, float]]
-) -> Tuple[str, List[Dict], List[float]]:
+) -> Tuple[str, List[Dict], List[float], List[Dict]]:
     context_parts: List[str] = []
     sources_seen: set = set()
     sources: List[Dict] = []
     scores: List[float] = []
+    evidence_items: List[Dict] = []
 
     for doc, score in results:
         # Parent-Child Hierarchical Context Reconstruction
@@ -82,13 +105,27 @@ def _build_context_and_sources(
         raw = doc.metadata.get("source", "unknown")
         display_name = doc.metadata.get("document_name", os.path.basename(raw))
         page_num = int(doc.metadata.get("page", 0)) + 1
+        raw_content = doc.page_content.strip()
 
         key = f"{display_name}::{page_num}"
         if key not in sources_seen:
             sources_seen.add(key)
             sources.append({"document": display_name, "page": page_num})
 
-    return "\n\n---\n\n".join(context_parts), sources, scores
+        # Structured safe evidence item for Evidence Inspector
+        relevance_tag = (
+            "High Relevance" if score >= 0.70
+            else "Moderate Relevance" if score >= 0.35
+            else "Context Match"
+        )
+        evidence_items.append({
+            "document": display_name,
+            "page": page_num,
+            "excerpt": raw_content[:320] if len(raw_content) > 320 else raw_content,
+            "relevance": relevance_tag,
+        })
+
+    return "\n\n---\n\n".join(context_parts), sources, scores, evidence_items
 
 
 def _build_prompt(question: str, context: str, history: str, mode: str) -> str:
@@ -158,6 +195,8 @@ async def run_rag_pipeline(
         return {
             "answer": NOT_FOUND,
             "sources": [],
+            "evidence": [],
+            "evidence_level": "INSUFFICIENT EVIDENCE",
             "confidence": 0.0,
             "mode": mode,
             "document_id": document_id,
@@ -176,7 +215,7 @@ async def run_rag_pipeline(
     if not filtered:
         filtered = reranked[:2]  # Fallback to top 2 candidates if below threshold
 
-    context, sources, scores = _build_context_and_sources(filtered)
+    context, sources, scores, evidence = _build_context_and_sources(filtered)
     confidence = round(sum(scores) / len(scores), 4) if scores else 0.0
     highlight_text = filtered[0][0].page_content.strip()[:300] if filtered else ""
 
@@ -195,11 +234,17 @@ async def run_rag_pipeline(
         "information not found", "not found in document",
         "not present in", "not mentioned in", "cannot be found",
         "no information", "i don't have", "i do not have",
+        "not enough evidence", "insufficient evidence",
     ]
-    if any(sig in answer.lower() for sig in _signals):
+    is_refusal = any(sig in answer.lower() for sig in _signals)
+    if is_refusal:
         answer = NOT_FOUND
         sources = []
+        evidence = []
         highlight_text = ""
+        evidence_level = "INSUFFICIENT EVIDENCE"
+    else:
+        evidence_level = determine_evidence_level(scores, len(filtered), is_refusal=False)
 
     if resolved_chat_id:
         await _save_pair_to_chat(resolved_chat_id, question, answer)
@@ -207,6 +252,8 @@ async def run_rag_pipeline(
     return {
         "answer": answer,
         "sources": sources,
+        "evidence": evidence,
+        "evidence_level": evidence_level,
         "confidence": confidence,
         "mode": mode,
         "document_id": document_id,
@@ -236,6 +283,8 @@ async def stream_rag_pipeline(
     meta_frame = {
         "type": "meta",
         "sources": rag_res["sources"],
+        "evidence": rag_res.get("evidence", []),
+        "evidence_level": rag_res.get("evidence_level", "INSUFFICIENT EVIDENCE"),
         "confidence": rag_res["confidence"],
         "highlight_text": rag_res["highlight_text"],
         "chat_id": rag_res["chat_id"],

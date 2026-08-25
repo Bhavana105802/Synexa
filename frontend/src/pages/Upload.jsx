@@ -25,9 +25,9 @@ export default function Upload() {
         </button>
         <div className="flex items-center gap-2.5">
           <div className="flex items-center justify-center">
-  <img src="/logo.png" alt="Synexa" className="w-8 h-8 object-contain" />
+  <img src="/logo.png" alt="Evidentra" className="w-8 h-8 object-contain" />
 </div>
-          <span className="font-display font-bold text-white">Synexa</span>
+          <span className="font-display font-bold text-white">Evidentra</span>
         </div>
       </div>
 

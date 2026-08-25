@@ -3,7 +3,7 @@ import logging
 from fastapi import APIRouter, HTTPException, Depends
 
 from app.models.request_models import QueryRequest
-from app.models.response_models import QueryResponse, SourceDocument
+from app.models.response_models import QueryResponse, SourceDocument, EvidenceItem
 from app.services.rag_pipeline import run_rag_pipeline
 from app.services.auth import get_current_user
 
@@ -66,14 +66,26 @@ async def ask_question(
             SourceDocument(document=s["document"], page=s["page"])
             for s in result.get("sources", [])
         ]
+        evidence = [
+            EvidenceItem(
+                document=e.get("document", "Document"),
+                page=int(e.get("page", 1)),
+                excerpt=e.get("excerpt", ""),
+                relevance=e.get("relevance", "Context Match"),
+            )
+            for e in result.get("evidence", [])
+        ]
 
         return QueryResponse(
             answer=result["answer"],
             sources=sources,
+            evidence=evidence,
+            evidence_level=result.get("evidence_level", "INSUFFICIENT EVIDENCE"),
             confidence=result["confidence"],
             mode=result["mode"],
             chat_id=result.get("chat_id"),
             document_id=result.get("document_id"),
+            highlight_text=result.get("highlight_text", ""),
         )
 
     except HTTPException:

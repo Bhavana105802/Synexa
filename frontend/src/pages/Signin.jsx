@@ -97,9 +97,9 @@ export default function Signin() {
         {/* Logo */}
         <div className="flex items-center justify-center gap-1 mb-8">
           <div className="flex items-center justify-center">
-  <img src="/logo.png" alt="Synexa" className="w-8 h-8 object-contain" />
+  <img src="/logo.png" alt="Evidentra" className="w-8 h-8 object-contain" />
 </div>
-          <span className="text-gradient text-2xl font-bold tracking-wide drop-shadow-[0_0_10px_rgba(59,130,246,0.5)]">Synexa</span>
+          <span className="text-gradient text-2xl font-bold tracking-wide drop-shadow-[0_0_10px_rgba(59,130,246,0.5)]">Evidentra</span>
         </div>
 
           <form onSubmit={handleSignin} noValidate className="space-y-4">

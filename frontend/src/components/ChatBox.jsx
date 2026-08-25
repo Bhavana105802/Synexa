@@ -63,6 +63,8 @@ export default function ChatBox() {
         role: 'ai',
         content: data.answer,
         sources: data.sources || [],
+        evidence: data.evidence || [],
+        evidence_level: data.evidence_level || 'INSUFFICIENT EVIDENCE',
         confidence: data.confidence,
         mode: data.mode,
       })
@@ -71,7 +73,14 @@ export default function ChatBox() {
       const msg = err.response?.status === 401
         ? '🔒 Session expired. Please sign in again.'
         : `**Error:** ${detail || err.message || 'Backend error'}`
-      addMessage({ role: 'ai', content: msg, sources: [], confidence: 0 })
+      addMessage({
+        role: 'ai',
+        content: msg,
+        sources: [],
+        evidence: [],
+        evidence_level: 'INSUFFICIENT EVIDENCE',
+        confidence: 0,
+      })
     } finally {
       setIsLoading(false)
     }
@@ -93,7 +102,7 @@ export default function ChatBox() {
           <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.7)]" />
           <div className="min-w-0">
             <h2 className="font-semibold text-[13px] text-white truncate">
-              {activeDocument ? activeDocument.name : 'Synexa Chat'}
+              {activeDocument ? activeDocument.name : 'Evidentra Chat'}
             </h2>
             {activeDocument && (
               <p className="text-[10px] text-slate-500 font-mono mt-0.5">

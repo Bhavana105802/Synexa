@@ -44,9 +44,9 @@ export default function Landing() {
       <nav className="relative z-10 flex items-center justify-between px-8 py-5 max-w-7xl mx-auto">
         <div className="flex items-center gap-1">
           <div className="flex items-center justify-center">
-  <img src="/logo.png" alt="Synexa" className="w-8 h-8 object-contain" />
+  <img src="/logo.png" alt="Evidentra" className="w-8 h-8 object-contain" />
 </div>
-<span className="text-gradient text-xl font-bold tracking-wide drop-shadow-[0_0_10px_rgba(59,130,246,0.5)]">Synexa</span>
+<span className="text-gradient text-xl font-bold tracking-wide drop-shadow-[0_0_10px_rgba(59,130,246,0.5)]">Evidentra</span>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -73,18 +73,16 @@ export default function Landing() {
         >
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent/10 border border-accent/20 text-xs font-mono text-accent mb-8">
             <Star size={10} fill="currentColor" />
-            RAG-powered · Open source · Runs locally
+            Evidence-Backed Document Intelligence
           </div>
 
           <h1 className="font-display font-extrabold text-5xl md:text-7xl text-white leading-[1.05] tracking-tight mb-6">
-            Chat with your{' '}
-            <span className="text-gradient">documents</span>
-            <br />intelligently.
+            From documents to{' '}
+            <span className="text-gradient">defensible answers.</span>
           </h1>
 
           <p className="text-lg text-slate-400 leading-relaxed max-w-2xl mx-auto mb-10">
-            Synexa uses retrieval-augmented generation to let you ask natural language questions
-            about your PDFs and get precise, cited answers powered by local AI.
+            Evidentra is a document intelligence system that helps users obtain answers supported by retrieved evidence and traceable sources.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -94,7 +92,7 @@ export default function Landing() {
               onClick={() => navigate('/upload')}
               className="btn-primary flex items-center gap-2 text-base px-7 py-3.5"
             >
-              Start Chatting with Your Documents
+              Start Exploring Documents
               <ArrowRight size={16} />
             </motion.button>
           </div>
@@ -229,7 +227,7 @@ function FakeChatMessage({ role, text, sources, confidence }) {
               </span>
             ))}
             {confidence && (
-              <span className="text-[10px] text-emerald-400 font-mono ml-auto">{confidence}%</span>
+              <span className="text-[10px] text-emerald-400 font-mono ml-auto font-semibold">STRONG EVIDENCE</span>
             )}
           </div>
         )}

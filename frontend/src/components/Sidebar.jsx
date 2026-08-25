@@ -225,9 +225,9 @@ export default function Sidebar() {
                  flex-shrink-0">
         <div className="flex items-center gap-1">
           <div className="flex items-center justify-center">
-  <img src="/logo.png" alt="Synexa" className="w-8 h-8 object-contain" />
+  <img src="/logo.png" alt="Evidentra" className="w-8 h-8 object-contain" />
 </div>
-          <span className="text-gradient text-xl font-bold tracking-wide drop-shadow-[0_0_10px_rgba(59,130,246,0.5)]">Synexa</span>
+          <span className="text-gradient text-xl font-bold tracking-wide drop-shadow-[0_0_10px_rgba(59,130,246,0.5)]">Evidentra</span>
         </div>
         <button onClick={() => setSidebarCollapsed(true)}
           className="p-1.5 rounded-lg hover:bg-white/5 text-slate-500
